@@ -11,7 +11,7 @@ namespace TelegramBot
 {
     class Program
     {
-        static public readonly TelegramBotClient bot = new TelegramBotClient("1312812754:AAG80LUpOomt-Wi51Y21L1Zg0uhUyJHFqLc");
+        static public readonly TelegramBotClient bot = new TelegramBotClient("UR BOT API-TOKEN");
 
         public static List<Username> usernames = new List<Username>();
         public static List<Giveaway> giveaways = new List<Giveaway>();
