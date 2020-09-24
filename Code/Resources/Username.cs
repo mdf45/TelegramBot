@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Telegram.Bot;
 using Telegram.Bot.Types;
 
 namespace TelegramBot.Resources
@@ -19,12 +16,17 @@ namespace TelegramBot.Resources
         }
         public Username(Message msg) : this()
         {
+            tgId = msg.From.Id;
             username = msg.From.Username;
             FirstName = msg.From.FirstName;
             LastName = msg.From.LastName;
+            chatId = msg.Chat.Id;
         }
 
         static uint staticID = 1;
+
+        public long chatId { get; set; }
+        public long tgId { get; set; }
         public uint id { get; set; }
         public string username { get; set; }
 
@@ -33,6 +35,8 @@ namespace TelegramBot.Resources
 
         // GAME
 
+        public bool inGiveaway { get; set; }
+        public bool isStels { get; set; }
         public bool inGame { get; set; }
         public int PenisLength { get; set; }
 
