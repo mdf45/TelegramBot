@@ -9,33 +9,38 @@ namespace TelegramBot.Resources
     {
         public Giveaway(long chatId)
         {
-            this.chatId = chatId;
+            ChatId = chatId;
+            maxGifts = (int)Math.Ceiling(maxPlayers / 5.0);
         }
         public string GiveawayEventAndText() // Начало игры
         {
-            timeForGame = DateTime.Now.AddMinutes(2).AddSeconds(1);
+            timeForGame = DateTime.Now.AddMinutes(10);
 
             //
             players = new List<Username>();
             playerInGame = 0;
-            isGiveaway = true;
-            gift = 0;
+            IsGiveaway = true;
             //
 
             SetATimer();
 
-            string text = $"Начался розыгрыш писюна! 🎰\n" +
-                $"Каждый участник добавляет в банк по {bonusPerPlayer} см!\n" +
-                $"Для участия введите {command}\n" +
+            string text = $"Начался розыгрыш дополнительных игр! 🎰\n" +
+                $"Максимум победителей: {maxGifts}\n" +
+                $"Для участия введите {Command}\n" +
                 $"Игроков:\n" +
-                $"{fillPlayerBar(ref playerInGame, ref maxPlayers)}\n" +
-                $"Время регистрации: {(timeForGame - DateTime.Now).Minutes} мин. {(timeForGame - DateTime.Now).Seconds} сек.\n" +
+                $"{FillPlayerBar(ref playerInGame, ref maxPlayers)}\n" +
+                $"Время регистрации: {(int) Math.Round((timeForGame - DateTime.Now).TotalMinutes, MidpointRounding.ToEven)} мин.\n" +
                 $"Если до начала розыгрыша набёрётся {maxPlayers} чел. то розыгрыш начнётся автоматически!";
 
             return text;
         }
 
-        private static string fillPlayerBar(ref int pl, ref int max)
+        public async void StartGiveaway()
+        {
+            MessagesList.Add(await Program.bot.SendTextMessageAsync(ChatId, GiveawayEventAndText()).ConfigureAwait(false));
+        }
+
+        private static string FillPlayerBar(ref int pl, ref int max)
         {
             string text = "",
                 fillSymbol = "🌕",
@@ -56,110 +61,80 @@ namespace TelegramBot.Resources
             aTimer.AutoReset = true;
             aTimer.Enabled = true;
         }
-        private void SetGTimer()
-        {
-            gTimer = new Timer(1000);
-            gTimer.Elapsed += WaitingForGiveaway;
-            gTimer.AutoReset = true;
-            gTimer.Enabled = true;
-        }
-        public void StartGiveAway()
-        {
-            if (isGiveaway) return;
-
-            timeForGiveaway = DateTime.Now.AddHours(1); // Просто обновляем время на время игры, во избежание багов 
-
-            isAdminStart = true;
-
-            SetGTimer();
-        }
-        public void StartGiveaway(int min = 60 + 1, int max = 120 + 1)
-        {
-            if (isGiveaway) return;
-
-            timeForGiveaway = DateTime.Now.AddMinutes(rand.Next(min, max + 1));
-
-            SetGTimer();
-        }
-
-        private static string NotificationText(DateTime t1, DateTime t2)
-        {
-            string text = $"Готовтесь, через {(t1 - t2).Minutes} минут будет розыгрыш! 🎰🎰🎰";
-
-            return text;
-        }
-
-        private async void WaitingForGiveaway(object source, ElapsedEventArgs e)
-        {
-            if (e.SignalTime >= timeForGiveaway.AddMinutes(-1) && gTimer.Enabled || isAdminStart)
-            {
-                if (isAdminStart) isAdminStart = false;
-
-                timeForGiveaway = DateTime.Now.AddHours(10); // Просто обновляем время на время игры, во избежание багов 
-
-                await Program.bot.SendTextMessageAsync(chatId, GiveawayEventAndText()).ConfigureAwait(true);
-
-                gTimer.Stop();
-                gTimer.Dispose();
-                gTimer.Enabled = false;
-            }
-            else if ((timeForGiveaway - e.SignalTime).Hours <= 0)
-            {
-                if ((timeForGiveaway - e.SignalTime).Minutes == NotificationsTimes[indexOfNotification])
-                {
-                    ++indexOfNotification;
-
-                    if (indexOfNotification == NotificationsTimes.Length) indexOfNotification = 0;
-
-                    await Program.bot.SendTextMessageAsync(chatId, NotificationText(timeForGiveaway, e.SignalTime)).ConfigureAwait(true);
-                }
-            }
-        }
 
         private async void WaitingForGame(object source, ElapsedEventArgs e)
         {
-            if (playerInGame == maxPlayers && aTimer.Enabled && !isMaxPlayersEnd)
+            if (playerInGame == maxPlayers && aTimer.Enabled && !IsMaxPlayersEnd)
             {
-                isMaxPlayersEnd = true;
+                IsMaxPlayersEnd = true;
                 timeForGame = e.SignalTime.AddSeconds(4);
             }
-            if (e.SignalTime >= timeForGame && aTimer.Enabled)
+            else if ((int)Math.Round((timeForGame - e.SignalTime).TotalSeconds, MidpointRounding.ToEven) <= 0 && aTimer.Enabled)
             {
-                timeForGame = DateTime.Now.AddMinutes(2).AddSeconds(1);
+                timeForGame = DateTime.Now.AddMinutes(10);
 
-                await Program.bot.SendTextMessageAsync(chatId, EndGame()).ConfigureAwait(true);
+                await Program.bot.SendTextMessageAsync(ChatId, EndGame()).ConfigureAwait(true);
+
+                DelMsgList(MessagesList);
 
                 aTimer.Stop();
                 aTimer.Dispose();
                 aTimer.Enabled = false;
+
+                MessagesList = new List<Message>();
             }
-            if ((timeForGame.Minute - e.SignalTime.Minute) == 0 && (timeForGame.Second - e.SignalTime.Second) <= 3 && (timeForGame.Second - e.SignalTime.Second) > 0)
+            else if ((int)Math.Round((timeForGame - e.SignalTime).TotalSeconds, MidpointRounding.ToEven) <= 3 &&
+                (int)Math.Round((timeForGame - e.SignalTime).TotalSeconds, MidpointRounding.ToEven) > 0)
             {
-                await Program.bot.SendTextMessageAsync(chatId, $"{timeForGame.Second - e.SignalTime.Second}...").ConfigureAwait(true); // 3... 2... 1...
+                MessagesList.Add(await Program.bot.SendTextMessageAsync(ChatId, $"{(int)Math.Round((timeForGame - e.SignalTime).TotalSeconds, MidpointRounding.ToEven)}...").ConfigureAwait(true)); // 3... 2... 1...
             }
-            else if ((timeForGame.Minute - e.SignalTime.Minute) == 1 && (timeForGame.Second - e.SignalTime.Second) == 0)
+            else if ((int) Math.Round((timeForGame - e.SignalTime).TotalSeconds, MidpointRounding.ToEven) == 60 + 1)
             {
-                await Program.bot.SendTextMessageAsync(chatId, $"До начала розыгрыша {(timeForGame.Minute - e.SignalTime.Minute)} мин...").ConfigureAwait(true); // Уведомление о том что осталась 1 минута
+                MessagesList.Add(await Program.bot.SendTextMessageAsync(ChatId, $"До начала розыгрыша {(int)Math.Round((timeForGame - e.SignalTime).TotalMinutes, MidpointRounding.ToEven)} мин...").ConfigureAwait(true)); // Уведомление о том что осталась 1 минута
             }
         }
         public string EndGame()
         {
-            string text;
+            string text, winnersText = "";
 
             if (playerInGame > 0)
             {
-                int winner = rand.Next(0, playerInGame);
+                gifts = (int)Math.Ceiling(playerInGame / 5.0);
+
+                int winner;
+
+                List<int> winners = new List<int>(gifts);
+
+                for (int i = 0; i < gifts; ++i)
+                {
+                    winners.Add(-1);
+
+                    winner = rand.Next(0, playerInGame);
+
+                    while (winners.Contains(winner)) winner = rand.Next(0, playerInGame);
+
+                    winners[i] = winner;
+                }
 
                 double x = 1, y = playerInGame;
 
-                text = $"ОПА НА! 🙈🙉🙊\n" +
-                        $"Прямо на ваших глазах @{players[winner].username} выйграл/а {gift} см. с шансом {(int)(x / y * 100)}%\n" +
+                for (int i = 0; i < gifts; i++)
+                {
+                    winnersText += $"@{players[winners[i]].Username_} выйграл(а) +{gifts - i} 🎮\n";
+                }
+
+                text = $"Поздравляем!\n" +
+                        $"Прямо на ваших глазах:\n" +
+                        $"{winnersText}" + 
+                        $"Шанс выйгрыша: {(int)(x / y * 100)}%\n" +
                         $"Ожидайте следующий розыгрыш!\n";
 
-                Username user = Program.usernames.Find(x => x.id == players[winner].id);
+                for (int i = 0; i < gifts; i++)
+                {
+                    var user = Program.usernames.Find(x => x.Id == players[winners[i]].Id);
 
-                user.inGame = true;
-                user.PenisLength += gift;
+                    user.Attempts += gifts - i;
+                }
             }
             else
             {
@@ -168,54 +143,48 @@ namespace TelegramBot.Resources
             }
 
             //
-            isGiveaway = false;
-            isMaxPlayersEnd = false;
-            indexOfNotification = 0;
+            IsGiveaway = false;
+            IsMaxPlayersEnd = false;
             playerInGame = 0;
 
             foreach (var item in players)
-                item.inGiveaway = false;
-
-            StartGiveaway();
+                item.InGiveaway = false;
 
             //
 
             return text;
         }
 
-        public string newPlayer(ref Username us, ref Message msg) // Регистрация новых игроков
+        public string NewPlayer(ref Username us, ref Message msg) // Регистрация новых игроков
         {
             string text = $"@{msg.From.Username}";
 
-            if (isGiveaway)
+            if (IsGiveaway)
             {
                 long userId = msg.From.Id;
                 long chatId = msg.Chat.Id;
 
                 bool AlreadyInGame = false;
 
-                if (players.Find(x => x.chatId == chatId && x.tgId == userId) != null)
-                    AlreadyInGame = players.Find(x => x.chatId == chatId && x.tgId == userId).inGiveaway;
+                if (players.Find(x => x.ChatId == chatId && x.TgId == userId) != null)
+                    AlreadyInGame = players.Find(x => x.ChatId == chatId && x.TgId == userId).InGiveaway;
 
                 if (AlreadyInGame) return $"{text}, вы уже зарегистрированы ❌\n" +
-                        $"Сейчас разыгрывается: {gift} см.\n" +
                         $"Игроков:\n" +
-                        $"{fillPlayerBar(ref playerInGame, ref maxPlayers)}\n" +
+                        $"{FillPlayerBar(ref playerInGame, ref maxPlayers)}\n" +
                         $"Время до начала розыгрыша: {(timeForGame - DateTime.Now).Minutes} мин. {(timeForGame - DateTime.Now).Seconds} сек.";
                 else
                 {
                     if (playerInGame < maxPlayers)
                     {
                         players.Add(us);
-                        gift += bonusPerPlayer;
-                        players[players.Count - 1].inGiveaway = true;
+                        players[players.Count - 1].InGiveaway = true;
 
-                        playerInGame = players.FindAll(x => x.inGiveaway && x.chatId == chatId).Count;
+                        playerInGame = players.FindAll(x => x.InGiveaway && x.ChatId == chatId).Count;
 
                         return $"{text}, вы успешно зарегистрировались! ✔\n" +
-                            $"Сейчас разыгрывается: {gift} см.\n" +
                             $"Игроков:\n" +
-                            $"{fillPlayerBar(ref playerInGame, ref maxPlayers)}\n" +
+                            $"{FillPlayerBar(ref playerInGame, ref maxPlayers)}\n" +
                             $"Время до начала розыгрыша: {(timeForGame - DateTime.Now).Minutes} мин. {(timeForGame - DateTime.Now).Seconds} сек.";
                     }
                     else
@@ -228,35 +197,47 @@ namespace TelegramBot.Resources
             else
             {
                 return $"{text}, сейчас нет активного розыгрыша❗\n" +
-                    $"Следующий розыгрыш через " +
-                    $"{((timeForGiveaway - DateTime.Now).Hours > 0 ? $"{(timeForGiveaway - DateTime.Now).Hours} ч. " : $"{(timeForGiveaway - DateTime.Now).Minutes} мин.")}";
+                    $"Розыгрыш проводится каждый день в {(new TimeSpan(24,0,0).Add(new TimeSpan(Program.UTC * -1 + 3,0,0))).Hours} по МСК!";
             }
         }
 
-        private static uint[] NotificationsTimes = { 30, 10, 5 }; // На каких минутах будет уведомление о том что "скоро розыгрыш", в порядке убывания
+        private async static void DelMsg(Message msg)
+        {
+            if (msg != null) await Program.bot.DeleteMessageAsync(msg.Chat.Id, msg.MessageId).ConfigureAwait(true);
+        }
 
-        public long chatId { get; set; }
-        public bool isAdminStart { get; set; }
-        public bool isGiveaway { get; set; }
-        private bool isMaxPlayersEnd;
+        private async static void DelMsgList(List<Message> msg)
+        {
+            for (int i = 0; i < msg.Count; i++)
+            {
+                if (msg[i] != null) await Program.bot.DeleteMessageAsync(msg[i].Chat.Id, msg[i].MessageId).ConfigureAwait(true);
+            }
+        }
 
-        public static string command { get; } = "/giveaway";
+        public long ChatId { get; set; }
+        public bool IsGiveaway { get; set; }
+
+        private bool IsMaxPlayersEnd;
+
+        public static string Command { get; } = "/giveaway";
 
         private int playerInGame,
-            maxPlayers = 5,
-            bonusPerPlayer = 3,
-            indexOfNotification,
-            gift;
+            maxPlayers = 15,
+            gifts;
 
-        public Timer aTimer, gTimer;
-        private Random rand = new Random();
-        private DateTime timeForGame, timeForGiveaway;
+        private readonly int maxGifts;
 
+        public Timer aTimer;
+        public List<Message> MessagesList = new List<Message>();
+
+        private DateTime timeForGame;
         private List<Username> players = new List<Username>();
+
+        private readonly Random rand = new Random();
 
         public void Dispose()
         {
-            aTimer.Dispose(); gTimer.Dispose();
+            aTimer.Dispose();
 
             throw new NotImplementedException();
         }

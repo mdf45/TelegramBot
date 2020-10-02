@@ -7,46 +7,51 @@ namespace TelegramBot.Resources
     {
         public Username()
         {
-            id = staticID++;
+            Id = staticID++;
 
             // GAME
 
-            PenisLength = 0;
-            inGame = false;
+            Balance = 0;
+            Attempts = 1;
+            InGame = false;
         }
         public Username(Message msg) : this()
         {
-            tgId = msg.From.Id;
-            username = msg.From.Username;
+            TgId = msg.From.Id;
+            Username_ = msg.From.Username;
             FirstName = msg.From.FirstName;
             LastName = msg.From.LastName;
-            chatId = msg.Chat.Id;
+            ChatId = msg.Chat.Id;
         }
 
         static uint staticID = 1;
 
-        public long chatId { get; set; }
-        public long tgId { get; set; }
-        public uint id { get; set; }
-        public string username { get; set; }
+        public long ChatId { get; set; }
+        public long TgId { get; set; }
+        public uint Id { get; set; }
+        public string Username_ { get; set; }
 
         public string FirstName { get; set; }
         public string LastName { get; set; }
 
         // GAME
 
-        public bool inGiveaway { get; set; }
-        public bool isStels { get; set; }
-        public bool inGame { get; set; }
-        public int PenisLength { get; set; }
+        public bool InGiveaway { get; set; }
+        public bool IsStels { get; set; }
 
-        public DateTime lastGame { get; set; }
+        public bool Subscribed { get; set; }
+        public bool InGame { get; set; }
+        public int Balance { get; set; }
+
+        public int Attempts { get; set; }
+
+        public DateTime SubscriptionTime;
 
         //
 
-        public bool canPlay()
+        public bool CanPlay()
         {
-            return DateTime.UtcNow.AddHours(3).Day != lastGame.Day;
+            return Attempts > 0;
         }
     }
 }
