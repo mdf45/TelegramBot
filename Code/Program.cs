@@ -12,9 +12,9 @@ namespace TelegramBot
 {
     class Program
     {
-        private const string botApi = null; // UR API
+        private const string BOT_API = null; // UR API
 
-        static public readonly TelegramBotClient bot = new TelegramBotClient(botApi);
+        static public readonly TelegramBotClient bot = new TelegramBotClient(BOT_API);
 
         public static List<Username> usernames = new List<Username>();
         public static List<Giveaway> giveaways = new List<Giveaway>();
